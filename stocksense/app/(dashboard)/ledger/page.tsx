@@ -8,6 +8,10 @@ export default async function LedgerPage(props: {
   const productId = searchParams?.product_id as string | undefined;
   const warehouseId = searchParams?.warehouse_id as string | undefined;
   const search = searchParams?.search as string | undefined;
+  const from = searchParams?.from as string | undefined;
+  const to = searchParams?.to as string | undefined;
+  const page = Math.max(1, Number(searchParams?.page ?? 1) || 1);
+  const pageSize = 25;
 
   const supabase = await createClient();
 
@@ -15,11 +19,12 @@ export default async function LedgerPage(props: {
     .from("stock_ledger")
     .select(`
       *,
-      operation:operation_id(reference),
+      operation:operation_id!inner(reference),
       product:product_id(name, sku),
       warehouse:warehouse_id(name)
-    `)
-    .order("created_at", { ascending: false });
+    `, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range((page - 1) * pageSize, page * pageSize - 1);
 
   if (productId) {
     query = query.eq("product_id", productId);
@@ -27,24 +32,21 @@ export default async function LedgerPage(props: {
   if (warehouseId) {
     query = query.eq("warehouse_id", warehouseId);
   }
-  // search by reference requires join filtering, or we filter locally for MVP
-  // Supabase RPC or textSearch is better, but since this is an MVP we'll just fetch.
-  // We can filter locally for simplicity if search is provided, or add a basic ilike if we query operation table.
+  if (search) {
+    query = query.ilike("operation.reference", `%${search}%`);
+  }
+  if (from) {
+    query = query.gte("created_at", `${from}T00:00:00.000Z`);
+  }
+  if (to) {
+    query = query.lte("created_at", `${to}T23:59:59.999Z`);
+  }
 
   const [ledgerRes, prodRes, whRes] = await Promise.all([
     query,
     supabase.from("products").select("id, name, sku").order("name"),
     supabase.from("warehouses").select("id, name").order("name"),
   ]);
-
-  let ledgerData = ledgerRes.data || [];
-
-  if (search) {
-    const s = search.toLowerCase();
-    ledgerData = ledgerData.filter((entry: any) =>
-      entry.operation?.reference?.toLowerCase().includes(s)
-    );
-  }
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
@@ -56,9 +58,12 @@ export default async function LedgerPage(props: {
       </div>
 
       <LedgerTable
-        ledgerEntries={ledgerData}
+        ledgerEntries={ledgerRes.data || []}
         products={prodRes.data || []}
         warehouses={whRes.data || []}
+        page={page}
+        pageSize={pageSize}
+        total={ledgerRes.count || 0}
       />
     </div>
   );
