@@ -170,6 +170,7 @@ AS $$
 DECLARE
   op operations%ROWTYPE;
   line operation_lines%ROWTYPE;
+  source_inventory inventory%ROWTYPE;
   new_balance INTEGER;
   src_warehouse_id UUID;
   dst_warehouse_id UUID;
@@ -189,20 +190,31 @@ BEGIN
   dst_warehouse_id := op.destination_warehouse_id;
 
   FOR line IN SELECT * FROM operation_lines WHERE operation_id = p_operation_id LOOP
+    IF line.quantity <= 0 THEN
+      RAISE EXCEPTION 'Operation line % must have a positive quantity', line.id;
+    END IF;
+
     -- Deduct from source location (delivery / transfer out)
     IF op.source_location_id IS NOT NULL THEN
+      SELECT *
+        INTO source_inventory
+        FROM inventory
+        WHERE product_id = line.product_id
+          AND location_id = op.source_location_id
+        FOR UPDATE;
+
+      IF NOT FOUND OR source_inventory.quantity < line.quantity THEN
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'No inventory found for product % at source location %', line.product_id, op.source_location_id;
+        END IF;
+        RAISE EXCEPTION 'Insufficient stock for product % at source location % (available: %, requested: %)',
+          line.product_id, op.source_location_id, source_inventory.quantity, line.quantity;
+      END IF;
+
+      new_balance := source_inventory.quantity - line.quantity;
       UPDATE inventory
-        SET quantity = quantity - line.quantity, updated_at = now()
-        WHERE product_id = line.product_id AND location_id = op.source_location_id
-        RETURNING quantity INTO new_balance;
-
-      IF NOT FOUND THEN
-        RAISE EXCEPTION 'No inventory found for product % at source location %', line.product_id, op.source_location_id;
-      END IF;
-
-      IF new_balance < 0 THEN
-        RAISE EXCEPTION 'Insufficient stock for product % at source location (would be %)', line.product_id, new_balance;
-      END IF;
+        SET quantity = new_balance, updated_at = now()
+        WHERE id = source_inventory.id;
 
       INSERT INTO stock_ledger (product_id, location_id, warehouse_id, operation_id, movement_type, quantity, balance_after, reference)
         VALUES (line.product_id, op.source_location_id, src_warehouse_id, op.id, 'out', -line.quantity, new_balance, op.reference);
