@@ -48,6 +48,11 @@ export default async function LedgerPage(props: {
     supabase.from("warehouses").select("id, name").order("name"),
   ]);
 
+  const queryError = ledgerRes.error || prodRes.error || whRes.error;
+  if (queryError) {
+    throw new Error("Unable to load ledger: " + queryError.message);
+  }
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <div>

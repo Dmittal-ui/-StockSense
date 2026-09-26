@@ -10,7 +10,7 @@ export default async function ProductsPage() {
     .order("name");
 
   if (error) {
-    console.error(error);
+    throw new Error("Unable to load products: " + error.message);
   }
 
   return (

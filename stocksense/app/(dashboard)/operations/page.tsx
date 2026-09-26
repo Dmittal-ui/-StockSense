@@ -17,6 +17,11 @@ export default async function OperationsPage() {
     supabase.from("warehouses").select("id, name").order("name"),
   ]);
 
+  const queryError = opsRes.error || prodRes.error || whRes.error;
+  if (queryError) {
+    throw new Error("Unable to load operations: " + queryError.message);
+  }
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <div>
