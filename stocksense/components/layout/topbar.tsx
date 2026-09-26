@@ -3,7 +3,6 @@
 import {
   Bell,
   Search,
-  Sparkles,
   Moon,
   Sun,
   User,
@@ -26,22 +25,52 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AiChatSheet } from "@/components/ai/ai-chat-sheet";
-import { Badge } from "@/components/ui/badge";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
+
+const themeChangeEvent = "stocksense-theme-change";
+
+function getThemeSnapshot() {
+  if (typeof document === "undefined") return false;
+
+  const root = document.documentElement;
+  if (!root.hasAttribute("data-theme-initialized")) {
+    const savedTheme = window.localStorage.getItem("stocksense-theme");
+    const shouldUseDark =
+      savedTheme === "dark" ||
+      (savedTheme !== "light" &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    root.classList.toggle("dark", shouldUseDark);
+    root.setAttribute("data-theme-initialized", "");
+  }
+
+  return root.classList.contains("dark");
+}
+
+function subscribeToTheme(onChange: () => void) {
+  window.addEventListener("storage", onChange);
+  window.addEventListener(themeChangeEvent, onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener(themeChangeEvent, onChange);
+  };
+}
 
 export function Topbar() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    // Check initial theme
-    const root = document.documentElement;
-    setIsDark(root.classList.contains("dark"));
-  }, []);
+  const isDark = useSyncExternalStore(
+    subscribeToTheme,
+    getThemeSnapshot,
+    () => false
+  );
 
   const toggleTheme = () => {
     const root = document.documentElement;
-    root.classList.toggle("dark");
-    setIsDark(!isDark);
+    const nextIsDark = !isDark;
+    root.classList.toggle("dark", nextIsDark);
+    window.localStorage.setItem(
+      "stocksense-theme",
+      nextIsDark ? "dark" : "light"
+    );
+    window.dispatchEvent(new Event(themeChangeEvent));
   };
 
   return (

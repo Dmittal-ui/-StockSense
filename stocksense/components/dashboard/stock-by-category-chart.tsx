@@ -65,6 +65,7 @@ export function StockByCategoryChart({ data }: StockByCategoryChartProps) {
                 wrapperStyle={{
                   fontSize: "11px",
                   paddingTop: "20px",
+                  color: "var(--color-foreground)",
                 }}
               />
             </PieChart>
