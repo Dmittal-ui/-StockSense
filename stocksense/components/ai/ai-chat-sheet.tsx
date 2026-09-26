@@ -17,7 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { confirmOperation, cancelOperation } from "@/app/(dashboard)/operations/actions";
 import { toast } from "sonner";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 export function AiChatSheet() {
   const [input, setInput] = useState("");
@@ -26,25 +26,41 @@ export function AiChatSheet() {
   });
   const isLoading = status === "submitted" || status === "streaming";
   const [isPending, startTransition] = useTransition();
+  const pendingOperationIds = useRef(new Set<string>());
+  const [pendingOperations, setPendingOperations] = useState<Set<string>>(new Set());
 
   const handleConfirm = (opId: string) => {
+    if (pendingOperationIds.current.has(opId)) return;
+    pendingOperationIds.current.add(opId);
+    setPendingOperations(new Set(pendingOperationIds.current));
+
     startTransition(async () => {
       try {
         await confirmOperation(opId);
         toast.success("Draft confirmed successfully.");
       } catch (err: any) {
         toast.error(err.message);
+      } finally {
+        pendingOperationIds.current.delete(opId);
+        setPendingOperations(new Set(pendingOperationIds.current));
       }
     });
   };
 
   const handleCancel = (opId: string) => {
+    if (pendingOperationIds.current.has(opId)) return;
+    pendingOperationIds.current.add(opId);
+    setPendingOperations(new Set(pendingOperationIds.current));
+
     startTransition(async () => {
       try {
         await cancelOperation(opId);
         toast.success("Draft cancelled.");
       } catch (err: any) {
         toast.error(err.message);
+      } finally {
+        pendingOperationIds.current.delete(opId);
+        setPendingOperations(new Set(pendingOperationIds.current));
       }
     });
   };
@@ -116,7 +132,7 @@ export function AiChatSheet() {
                                 size="sm" 
                                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
                                 onClick={() => handleConfirm(toolInvocation.result.operationId)}
-                                disabled={isPending}
+                                disabled={isPending || pendingOperations.has(toolInvocation.result.operationId)}
                               >
                                 <Check className="w-4 h-4 mr-1" /> Confirm
                               </Button>
@@ -125,7 +141,7 @@ export function AiChatSheet() {
                                 variant="outline"
                                 className="w-full bg-white hover:bg-red-50 hover:text-red-600 border-indigo-200"
                                 onClick={() => handleCancel(toolInvocation.result.operationId)}
-                                disabled={isPending}
+                                disabled={isPending || pendingOperations.has(toolInvocation.result.operationId)}
                               >
                                 <X className="w-4 h-4 mr-1" /> Cancel
                               </Button>

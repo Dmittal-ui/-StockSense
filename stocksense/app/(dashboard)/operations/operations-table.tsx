@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { format } from "date-fns";
 import {
   Table,
@@ -45,6 +45,8 @@ export function OperationsTable({
 }) {
   const [filterType, setFilterType] = useState<string>("all");
   const [isPending, startTransition] = useTransition();
+  const pendingOperationIds = useRef(new Set<string>());
+  const [pendingOperations, setPendingOperations] = useState<Set<string>>(new Set());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Form state
@@ -127,23 +129,37 @@ export function OperationsTable({
   };
 
   const handleConfirm = (id: string) => {
+    if (pendingOperationIds.current.has(id)) return;
+    pendingOperationIds.current.add(id);
+    setPendingOperations(new Set(pendingOperationIds.current));
+
     startTransition(async () => {
       try {
         await confirmOperation(id);
         toast.success("Operation confirmed and stock updated.");
       } catch (err: any) {
         toast.error(err.message);
+      } finally {
+        pendingOperationIds.current.delete(id);
+        setPendingOperations(new Set(pendingOperationIds.current));
       }
     });
   };
 
   const handleCancel = (id: string) => {
+    if (pendingOperationIds.current.has(id)) return;
+    pendingOperationIds.current.add(id);
+    setPendingOperations(new Set(pendingOperationIds.current));
+
     startTransition(async () => {
       try {
         await cancelOperation(id);
         toast.success("Operation cancelled.");
       } catch (err: any) {
         toast.error(err.message);
+      } finally {
+        pendingOperationIds.current.delete(id);
+        setPendingOperations(new Set(pendingOperationIds.current));
       }
     });
   };
@@ -339,7 +355,7 @@ export function OperationsTable({
                           size="icon"
                           className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                           onClick={() => handleConfirm(op.id)}
-                          disabled={isPending}
+                          disabled={isPending || pendingOperations.has(op.id)}
                           title="Confirm Operation"
                         >
                           <Check className="h-4 w-4" />
@@ -349,7 +365,7 @@ export function OperationsTable({
                           size="icon"
                           className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
                           onClick={() => handleCancel(op.id)}
-                          disabled={isPending}
+                          disabled={isPending || pendingOperations.has(op.id)}
                           title="Cancel Operation"
                         >
                           <X className="h-4 w-4" />
