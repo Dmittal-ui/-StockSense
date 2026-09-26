@@ -40,6 +40,7 @@ export function ProductsTable({ products }: { products: any[] }) {
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const filteredProducts = products.filter(
     (p) =>
@@ -51,19 +52,28 @@ export function ProductsTable({ products }: { products: any[] }) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const isEdit = !!editingProduct;
+    setFieldErrors({});
 
     startTransition(async () => {
       try {
+        const result = isEdit
+          ? await updateProduct(editingProduct.id, formData)
+          : await createProduct(formData);
+
+        if (!result?.success) {
+          setFieldErrors(result?.fieldErrors ?? {});
+          toast.error(result?.formError ?? "Unable to save product.");
+          return;
+        }
+
         if (isEdit) {
-          await updateProduct(editingProduct.id, formData);
           toast.success("Product updated successfully");
         } else {
-          await createProduct(formData);
           toast.success("Product created successfully");
         }
         setIsDialogOpen(false);
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Unable to save product.");
       }
     });
   };
@@ -73,8 +83,8 @@ export function ProductsTable({ products }: { products: any[] }) {
       try {
         await deleteProduct(id);
         toast.success("Product deleted");
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Unable to delete product.");
       }
     });
   };
@@ -117,6 +127,9 @@ export function ProductsTable({ products }: { products: any[] }) {
                   defaultValue={editingProduct?.sku}
                   required
                 />
+                {fieldErrors.sku && (
+                  <p className="text-sm text-destructive">{fieldErrors.sku}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="name">Name</Label>
@@ -126,6 +139,9 @@ export function ProductsTable({ products }: { products: any[] }) {
                   defaultValue={editingProduct?.name}
                   required
                 />
+                {fieldErrors.name && (
+                  <p className="text-sm text-destructive">{fieldErrors.name}</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -136,6 +152,9 @@ export function ProductsTable({ products }: { products: any[] }) {
                     defaultValue={editingProduct?.category}
                     required
                   />
+                  {fieldErrors.category && (
+                    <p className="text-sm text-destructive">{fieldErrors.category}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="unit">Unit</Label>
@@ -145,6 +164,9 @@ export function ProductsTable({ products }: { products: any[] }) {
                     defaultValue={editingProduct?.unit || "pcs"}
                     required
                   />
+                  {fieldErrors.unit && (
+                    <p className="text-sm text-destructive">{fieldErrors.unit}</p>
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
@@ -157,6 +179,9 @@ export function ProductsTable({ products }: { products: any[] }) {
                   defaultValue={editingProduct?.reorder_level || 10}
                   required
                 />
+                {fieldErrors.reorder_level && (
+                  <p className="text-sm text-destructive">{fieldErrors.reorder_level}</p>
+                )}
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={isPending}>
