@@ -1,4 +1,4 @@
-// @ts-nocheck
+
 import { anthropic } from '@ai-sdk/anthropic';
 import { convertToModelMessages, streamText, tool } from 'ai';
 import { z } from 'zod';
@@ -15,7 +15,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const { messages } = await req.json();
+  const body = await req.json();
+  if (!body || !Array.isArray(body.messages)) {
+    return Response.json({ error: "messages must be an array." }, { status: 400 });
+  }
+
+  const { messages } = body;
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
@@ -25,41 +30,41 @@ export async function POST(req: Request) {
     tools: {
       searchProducts: tool({
         description: 'Search for products by name or SKU',
-        parameters: z.object({ query: z.string().describe("The search term for product name or SKU") }),
+        inputSchema: z.object({ query: z.string().describe("The search term for product name or SKU") }),
         execute: async ({ query }) => {
           const supabase = await createClient();
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('products')
             .select('*')
             .or(`name.ilike.%${query}%,sku.ilike.%${query}%`)
             .limit(10);
-          return data;
+          return error ? { success: false, error: error.message } : { success: true, data: data ?? [] };
         },
       }),
       listWarehouses: tool({
         description: 'List all warehouses in the system',
-        parameters: z.object({}),
+        inputSchema: z.object({}),
         execute: async () => {
           const supabase = await createClient();
-          const { data } = await supabase.from('warehouses').select('*');
-          return data;
+          const { data, error } = await supabase.from('warehouses').select('*');
+          return error ? { success: false, error: error.message } : { success: true, data: data ?? [] };
         },
       }),
       checkStock: tool({
         description: 'Check stock levels for a specific product ID across all warehouses',
-        parameters: z.object({ productId: z.string().describe("The UUID of the product") }),
+        inputSchema: z.object({ productId: z.string().describe("The UUID of the product") }),
         execute: async ({ productId }) => {
           const supabase = await createClient();
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('inventory')
             .select('*, warehouse:warehouse_id(name)')
             .eq('product_id', productId);
-          return data;
+          return error ? { success: false, error: error.message } : { success: true, data: data ?? [] };
         },
       }),
       draftTransfer: tool({
         description: 'Create a draft transfer operation between two warehouses',
-        parameters: z.object({
+        inputSchema: z.object({
           sourceWarehouseId: z.string().describe("UUID of the source warehouse"),
           destWarehouseId: z.string().describe("UUID of the destination warehouse"),
           productId: z.string().describe("UUID of the product to transfer"),
@@ -80,8 +85,11 @@ export async function POST(req: Request) {
               needsConfirmation: true,
               operationId: opId
             };
-          } catch (e: any) {
-            return { success: false, error: e.message };
+          } catch (error) {
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : "Unable to create draft transfer.",
+            };
           }
         },
       }),
