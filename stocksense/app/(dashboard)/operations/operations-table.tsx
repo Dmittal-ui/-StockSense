@@ -34,15 +34,21 @@ import { Plus, Check, X, ArrowDownToLine, ArrowUpFromLine, ArrowLeftRight, Trash
 import { createOperation, confirmOperation, cancelOperation } from "./actions";
 import { toast } from "sonner";
 import { clsx } from "clsx";
+import type { Operation, Product, Warehouse } from "@/lib/database.types";
+
+type OperationRow = Operation & {
+  source_warehouse: Pick<Warehouse, "name"> | null;
+  destination_warehouse: Pick<Warehouse, "name"> | null;
+};
 
 export function OperationsTable({ 
   operations, 
   products, 
   warehouses 
 }: { 
-  operations: any[];
-  products: any[];
-  warehouses: any[];
+  operations: OperationRow[];
+  products: Pick<Product, "id" | "name" | "sku">[];
+  warehouses: Pick<Warehouse, "id" | "name">[];
 }) {
   const [filterType, setFilterType] = useState<string>("all");
   const [isPending, startTransition] = useTransition();
@@ -136,8 +142,8 @@ export function OperationsTable({
         toast.success("Draft operation created successfully.");
         setIsDialogOpen(false);
         setItems([{ product_id: "", quantity: 1 }]);
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Unable to create operation.");
       }
     });
   };
@@ -151,8 +157,8 @@ export function OperationsTable({
       try {
         await confirmOperation(id);
         toast.success("Operation confirmed and stock updated.");
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Unable to confirm operation.");
       } finally {
         pendingOperationIds.current.delete(id);
         setPendingOperations(new Set(pendingOperationIds.current));
@@ -170,8 +176,8 @@ export function OperationsTable({
       try {
         await cancelOperation(id);
         toast.success("Operation cancelled.");
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Unable to cancel operation.");
       } finally {
         pendingOperationIds.current.delete(id);
         setPendingOperations(new Set(pendingOperationIds.current));

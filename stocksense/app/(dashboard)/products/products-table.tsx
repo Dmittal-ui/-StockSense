@@ -34,12 +34,13 @@ import {
 import { Plus, Search, Edit2, Trash2 } from "lucide-react";
 import { createProduct, updateProduct, deleteProduct } from "./actions";
 import { toast } from "sonner";
+import type { Product } from "@/lib/database.types";
 
-export function ProductsTable({ products }: { products: any[] }) {
+export function ProductsTable({ products }: { products: Product[] }) {
   const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const filteredProducts = products.filter(

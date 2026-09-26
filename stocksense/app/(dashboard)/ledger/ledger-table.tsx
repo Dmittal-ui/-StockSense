@@ -16,6 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowDownToLine, ArrowUpFromLine, Search } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { Product, StockLedgerEntry, Warehouse } from "@/lib/database.types";
+
+type LedgerEntry = StockLedgerEntry & {
+  operation: { reference: string } | null;
+  product: Pick<Product, "name" | "sku"> | null;
+  warehouse: Pick<Warehouse, "name"> | null;
+};
 
 export function LedgerTable({
   ledgerEntries,
@@ -25,9 +32,9 @@ export function LedgerTable({
   pageSize,
   total,
 }: {
-  ledgerEntries: any[];
-  products: any[];
-  warehouses: any[];
+  ledgerEntries: LedgerEntry[];
+  products: Pick<Product, "id" | "name" | "sku">[];
+  warehouses: Pick<Warehouse, "id" | "name">[];
   page: number;
   pageSize: number;
   total: number;
@@ -196,7 +203,7 @@ export function LedgerTable({
                     {entry.movement_type === "in" ? "+" : "-"}{entry.quantity}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {entry.stock_after_operation}
+                    {entry.balance_after}
                   </TableCell>
                 </TableRow>
               ))

@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
@@ -47,7 +46,7 @@ const OperationSchema = z
   });
 
 export async function createOperation(data: {
-  type: string;
+  type: "receipt" | "delivery" | "transfer";
   source_warehouse_id?: string | null;
   destination_warehouse_id?: string | null;
   items: Array<{ product_id: string; quantity: number }>;
@@ -65,8 +64,8 @@ export async function createOperation(data: {
     .insert({
       operation_type: data.type,
       status: "draft",
-      source_warehouse_id: data.source_warehouse_id,
-      destination_warehouse_id: data.destination_warehouse_id,
+      source_warehouse_id: data.source_warehouse_id ?? null,
+      destination_warehouse_id: data.destination_warehouse_id ?? null,
     })
     .select()
     .single();
@@ -78,6 +77,7 @@ export async function createOperation(data: {
     operation_id: opData.id,
     product_id: item.product_id,
     quantity: item.quantity,
+    done_quantity: 0,
   }));
 
   const { error: lineError } = await supabase
@@ -114,7 +114,7 @@ export async function confirmOperation(operationId: string) {
   }
 
   const { error } = await supabase.rpc("confirm_stock_operation", {
-    op_id: operationId,
+    p_operation_id: operationId,
   });
 
   if (error) {
@@ -131,7 +131,7 @@ export async function cancelOperation(operationId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("operations")
-    .update({ status: "cancelled" } as any)
+    .update({ status: "cancelled" })
     .eq("id", operationId);
 
   if (error) {
