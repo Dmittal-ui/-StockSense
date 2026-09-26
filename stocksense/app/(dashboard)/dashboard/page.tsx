@@ -4,17 +4,18 @@ import { StockByCategoryChart } from "@/components/dashboard/stock-by-category-c
 import { RecentOperationsTable } from "@/components/dashboard/recent-operations-table";
 import { LowStockAlerts } from "@/components/dashboard/low-stock-alerts";
 import { WarehouseOverview } from "@/components/dashboard/warehouse-overview";
+import { getDashboardData } from "@/lib/dashboard-data";
 
-import {
-  mockDashboardStats,
-  mockInventoryMovement,
-  mockStockByCategory,
-  mockRecentOperations,
-  mockLowStockProducts,
-  mockWarehouseOverview,
-} from "@/lib/mock-data";
+export default async function DashboardPage() {
+  const {
+    stats,
+    inventoryMovement,
+    stockByCategory,
+    recentOperations,
+    lowStockProducts,
+    warehouseOverview,
+  } = await getDashboardData();
 
-export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <div>
@@ -25,30 +26,31 @@ export default function DashboardPage() {
       </div>
 
       {/* KPI Row */}
-      <KpiCards stats={mockDashboardStats} />
+      <KpiCards stats={stats} />
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 h-full">
-          <InventoryMovementChart data={mockInventoryMovement} />
+          <InventoryMovementChart data={inventoryMovement} />
         </div>
         <div className="h-full">
-          <StockByCategoryChart data={mockStockByCategory} />
+          <StockByCategoryChart data={stockByCategory} />
         </div>
       </div>
 
       {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-2">
-          <RecentOperationsTable operations={mockRecentOperations} />
+          <RecentOperationsTable operations={recentOperations} />
         </div>
         <div className="h-full">
-          <LowStockAlerts products={mockLowStockProducts} />
+          <LowStockAlerts products={lowStockProducts} />
         </div>
         <div className="h-full">
-          <WarehouseOverview warehouses={mockWarehouseOverview} />
+          <WarehouseOverview warehouses={warehouseOverview} />
         </div>
       </div>
     </div>
   );
 }
+

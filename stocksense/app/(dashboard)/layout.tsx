@@ -10,7 +10,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <TooltipProvider delayDuration={0}>
+    <TooltipProvider delay={0}>
       <div className="min-h-screen bg-background">
         <Sidebar />
         {/* Main content area - offset by sidebar width */}

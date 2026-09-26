@@ -109,7 +109,7 @@ export function KpiCards({ stats }: KpiCardsProps) {
               </div>
               <div>
                 <p className="text-2xl font-bold tracking-tight">
-                  {typeof value === "number" && kpi.key === "totalValue"
+                  {typeof value === "number" && (kpi.key as string) === "totalValue"
                     ? `₹${value.toLocaleString()}`
                     : value}
                 </p>

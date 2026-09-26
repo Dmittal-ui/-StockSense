@@ -151,8 +151,8 @@ export function Sidebar() {
                 if (collapsed) {
                   return (
                     <li key={item.href}>
-                      <Tooltip delayDuration={0}>
-                        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                      <Tooltip>
+                        <TooltipTrigger className="w-full">{linkContent}</TooltipTrigger>
                         <TooltipContent side="right" sideOffset={8}>
                           {item.label}
                         </TooltipContent>

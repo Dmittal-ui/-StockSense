@@ -25,6 +25,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AiChatSheet } from "@/components/ai/ai-chat-sheet";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 
@@ -64,22 +65,11 @@ export function Topbar() {
         {/* Right side actions */}
         <div className="flex items-center gap-2">
           {/* AI Button */}
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative hover:bg-indigo-50 dark:hover:bg-indigo-950/30 group"
-              >
-                <Sparkles className="w-[18px] h-[18px] text-indigo-500 group-hover:text-indigo-600 transition-colors" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>AI Assistant</TooltipContent>
-          </Tooltip>
+          <AiChatSheet />
 
           {/* Notifications */}
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
+          <Tooltip>
+            <TooltipTrigger>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-[18px] h-[18px]" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-card" />
@@ -89,8 +79,8 @@ export function Topbar() {
           </Tooltip>
 
           {/* Theme Toggle */}
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
+          <Tooltip>
+            <TooltipTrigger>
               <Button variant="ghost" size="icon" onClick={toggleTheme}>
                 {isDark ? (
                   <Sun className="w-[18px] h-[18px]" />
@@ -109,7 +99,7 @@ export function Topbar() {
 
           {/* User Menu */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger>
               <button className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-accent transition-colors">
                 <Avatar className="w-8 h-8">
                   <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-xs font-semibold">
