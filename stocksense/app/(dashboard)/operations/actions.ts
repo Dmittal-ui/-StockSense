@@ -97,7 +97,23 @@ export async function createOperation(data: {
 
 export async function confirmOperation(operationId: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("confirm_stock_operation", {
+  const { data: operation, error: statusError } = await supabase
+    .from("operations")
+    .select("status")
+    .eq("id", operationId)
+    .maybeSingle();
+
+  if (statusError) {
+    throw new Error("Unable to check operation status: " + statusError.message);
+  }
+  if (!operation) {
+    throw new Error("Operation not found.");
+  }
+  if (operation.status !== "draft" && operation.status !== "confirmed") {
+    throw new Error(`Operation is already ${operation.status}.`);
+  }
+
+  const { error } = await supabase.rpc("confirm_stock_operation", {
     op_id: operationId,
   });
 

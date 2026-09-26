@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
   Table,
@@ -45,6 +46,7 @@ export function OperationsTable({
 }) {
   const [filterType, setFilterType] = useState<string>("all");
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const pendingOperationIds = useRef(new Set<string>());
   const [pendingOperations, setPendingOperations] = useState<Set<string>>(new Set());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -154,6 +156,7 @@ export function OperationsTable({
       } finally {
         pendingOperationIds.current.delete(id);
         setPendingOperations(new Set(pendingOperationIds.current));
+        router.refresh();
       }
     });
   };
@@ -172,6 +175,7 @@ export function OperationsTable({
       } finally {
         pendingOperationIds.current.delete(id);
         setPendingOperations(new Set(pendingOperationIds.current));
+        router.refresh();
       }
     });
   };
