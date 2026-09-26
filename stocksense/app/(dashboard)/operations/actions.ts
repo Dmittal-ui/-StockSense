@@ -3,6 +3,48 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+const OperationSchema = z
+  .object({
+    type: z.enum(["receipt", "delivery", "transfer"]),
+    source_warehouse_id: z.string().nullable().optional(),
+    destination_warehouse_id: z.string().nullable().optional(),
+    items: z
+      .array(
+        z.object({
+          product_id: z.string().min(1),
+          quantity: z.number().int().positive("Quantity must be a positive whole number"),
+        })
+      )
+      .min(1, "At least one line item is required"),
+  })
+  .superRefine((value, context) => {
+    const productIds = value.items.map((item) => item.product_id);
+    if (new Set(productIds).size !== productIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["items"],
+        message: "Each product can only appear once.",
+      });
+    }
+
+    if (value.type === "transfer") {
+      if (!value.source_warehouse_id || !value.destination_warehouse_id) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["source_warehouse_id"],
+          message: "Transfer source and destination are required.",
+        });
+      } else if (value.source_warehouse_id === value.destination_warehouse_id) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["destination_warehouse_id"],
+          message: "Transfer source and destination must be different.",
+        });
+      }
+    }
+  });
 
 export async function createOperation(data: {
   type: string;
@@ -10,17 +52,22 @@ export async function createOperation(data: {
   destination_warehouse_id?: string | null;
   items: Array<{ product_id: string; quantity: number }>;
 }) {
+  const parsed = OperationSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid operation.");
+  }
+
   const supabase = await createClient();
 
   // 1. Insert Operation
   const { data: opData, error: opError } = await supabase
     .from("operations")
     .insert({
-      type: data.type,
+      operation_type: data.type,
       status: "draft",
       source_warehouse_id: data.source_warehouse_id,
       destination_warehouse_id: data.destination_warehouse_id,
-    } as any)
+    })
     .select()
     .single();
 
@@ -35,7 +82,7 @@ export async function createOperation(data: {
 
   const { error: lineError } = await supabase
     .from("operation_lines")
-    .insert(itemsToInsert as any);
+    .insert(itemsToInsert);
 
   if (lineError) {
     // Attempt rollback

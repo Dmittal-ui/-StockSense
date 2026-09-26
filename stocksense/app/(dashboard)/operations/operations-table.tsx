@@ -57,7 +57,7 @@ export function OperationsTable({
 
   const filteredOps = filterType === "all" 
     ? operations 
-    : operations.filter(o => o.type === filterType);
+    : operations.filter(o => o.operation_type === filterType);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -98,8 +98,16 @@ export function OperationsTable({
   };
 
   const handleCreate = () => {
-    if (items.some(i => !i.product_id || i.quantity <= 0)) {
+    if (items.length === 0) {
+      toast.error("Add at least one line item.");
+      return;
+    }
+    if (items.some(i => !i.product_id || !Number.isInteger(i.quantity) || i.quantity <= 0)) {
       toast.error("Please fill all item lines correctly.");
+      return;
+    }
+    if (new Set(items.map((item) => item.product_id)).size !== items.length) {
+      toast.error("Each product can only appear once.");
       return;
     }
     if ((opType === "delivery" || opType === "transfer") && !sourceId) {
@@ -108,6 +116,10 @@ export function OperationsTable({
     }
     if ((opType === "receipt" || opType === "transfer") && !destId) {
       toast.error("Destination warehouse required.");
+      return;
+    }
+    if (opType === "transfer" && sourceId === destId) {
+      toast.error("Transfer source and destination must be different.");
       return;
     }
 
@@ -336,7 +348,7 @@ export function OperationsTable({
                   <TableCell className="font-medium text-indigo-600 dark:text-indigo-400">
                     {op.reference}
                   </TableCell>
-                  <TableCell>{getTypeBadge(op.type)}</TableCell>
+                  <TableCell>{getTypeBadge(op.operation_type)}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {op.source_warehouse?.name || "-"}
                   </TableCell>
