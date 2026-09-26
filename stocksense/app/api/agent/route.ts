@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { anthropic } from '@ai-sdk/anthropic';
-import { streamText, tool } from 'ai';
+import { convertToModelMessages, streamText, tool } from 'ai';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createOperation } from '@/app/(dashboard)/operations/actions';
@@ -8,11 +8,19 @@ import { createOperation } from '@/app/(dashboard)/operations/actions';
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return Response.json(
+      { error: "The AI assistant is not configured. Set ANTHROPIC_API_KEY." },
+      { status: 503 }
+    );
+  }
+
   const { messages } = await req.json();
+  const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
     model: anthropic('claude-3-5-sonnet-20241022'),
-    messages,
+    messages: modelMessages,
     system: "You are StockSense AI, an intelligent inventory assistant. You can lookup products, check stock levels, list warehouses, and draft internal transfers. NEVER confirm an operation. You ONLY create drafts. If a user asks to move stock, find the product ID and warehouse IDs first, verify stock exists if possible, and then call the draftTransfer tool.",
     tools: {
       searchProducts: tool({
@@ -80,5 +88,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toUIMessageStreamResponse();
 }
